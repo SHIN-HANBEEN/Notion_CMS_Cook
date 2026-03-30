@@ -1,30 +1,30 @@
+import { getRecipes } from "@/lib/notion";
+import { RecipeGrid } from "@/components/recipe/RecipeGrid";
+
 /**
- * 홈(랜딩) 페이지
+ * 홈 페이지 (서버 컴포넌트)
  *
- * 4개의 섹션 컴포넌트를 순서대로 조합하여 랜딩 페이지를 구성합니다.
- * 모든 섹션은 서버 컴포넌트이므로 클라이언트 JS 번들에 포함되지 않습니다.
- * (애니메이션 래퍼 컴포넌트만 클라이언트 컴포넌트입니다.)
+ * ISR 방식으로 Notion DB에서 레시피 목록을 fetch합니다.
+ * revalidate: 1800 (30분) — Notion 이미지 URL 1시간 만료 전에 갱신
+ *
+ * 실제 필터링은 RecipeGrid(클라이언트 컴포넌트)에서 처리합니다.
  */
+export const revalidate = 1800;
 
-import { CtaSection } from "@/components/landing/cta-section";
-import { FeaturesSection } from "@/components/landing/features-section";
-import { HeroSection } from "@/components/landing/hero-section";
-import { TechStackSection } from "@/components/landing/tech-stack-section";
+export default async function HomePage() {
+  // Notion DB에서 공개된 레시피 목록 전체 fetch
+  const recipes = await getRecipes();
 
-export default function HomePage() {
   return (
-    <>
-      {/* 1. 히어로: 메인 타이틀 + CTA 버튼 */}
-      <HeroSection />
+    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+      {/* 페이지 헤더 */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold tracking-tight">🍳 레시피</h1>
+        <p className="text-muted-foreground mt-2">집에서 만들어 먹는 간단하고 맛있는 레시피 모음</p>
+      </div>
 
-      {/* 2. 기능 소개: 8개 기능 카드 그리드 */}
-      <FeaturesSection />
-
-      {/* 3. 기술 스택: Badge 목록 */}
-      <TechStackSection />
-
-      {/* 4. CTA: 예제 탐색 + GitHub 링크 */}
-      <CtaSection />
-    </>
+      {/* 레시피 그리드 + 필터 (클라이언트 컴포넌트) */}
+      <RecipeGrid recipes={recipes} />
+    </div>
   );
 }

@@ -7,38 +7,20 @@
 
 // 사이트 기본 정보
 export const SITE_CONFIG = {
-  name: "Next.js Starter Kit",
-  description:
-    "Next.js 16 + TypeScript + Tailwind CSS v4 + shadcn/ui 로 구성된 모던 웹 스타터킷입니다.",
-  url: "https://github.com",
+  name: "🍳 나만의 레시피",
+  description: "집에서 만들어 먹는 간단하고 맛있는 레시피 모음. Notion CMS 기반 요리 블로그.",
+  url: "https://github.com/SHIN-HANBEEN/Notion_CMS_Cook",
   version: "1.0.0",
 } as const;
 
 // 데스크탑 헤더 네비게이션 링크
-export const NAV_LINKS = [
-  { href: "/", label: "홈" },
-  { href: "/examples", label: "예제" },
-  { href: "/examples/animations", label: "애니메이션" },
-  { href: "/examples/charts", label: "차트" },
-  { href: "/examples/responsive", label: "반응형" },
-  { href: "/examples/storage", label: "저장소" },
-] as const;
+export const NAV_LINKS = [{ href: "/", label: "레시피" }] as const;
 
 // 모바일 네비게이션 링크 (섹션 구분 포함)
 export const MOBILE_NAV_SECTIONS = [
   {
-    title: "홈",
-    links: [{ href: "/", label: "홈" }],
-  },
-  {
-    title: "예제",
-    links: [
-      { href: "/examples", label: "전체 예제" },
-      { href: "/examples/animations", label: "애니메이션" },
-      { href: "/examples/charts", label: "차트" },
-      { href: "/examples/responsive", label: "반응형 로직" },
-      { href: "/examples/storage", label: "브라우저 저장소" },
-    ],
+    title: "메뉴",
+    links: [{ href: "/", label: "레시피 목록" }],
   },
 ] as const;
 

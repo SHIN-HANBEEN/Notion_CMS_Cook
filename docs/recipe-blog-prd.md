@@ -39,7 +39,7 @@
 | **F002** | 레시피 필터링 | 카테고리 / 난이도 / 조리시간으로 목록 필터 | 레시피 수 증가 시 탐색 필수 | 홈 페이지 |
 | **F003** | 레시피 상세 조회 | Notion 페이지 본문을 파싱하여 재료, 조리 순서, 사진 노출 | 콘텐츠 소비의 핵심 목적 | 레시피 상세 페이지 |
 | **F004** | Notion API 연동 | @notionhq/client로 DB 쿼리 및 페이지 블록 fetch | 모든 기능의 데이터 소스 | 홈 페이지, 레시피 상세 페이지 |
-| **F005** | ISR / 캐시 갱신 | Next.js ISR로 일정 주기 자동 재빌드, Webhook으로 즉시 갱신 지원 | 노션 편집이 즉시 웹에 반영 | 홈 페이지, 레시피 상세 페이지 |
+| **F005** | ISR 캐시 갱신 | Next.js ISR `revalidate: 1800`(30분)으로 자동 재빌드. Notion 이미지 URL 만료(1시간) 전 갱신 보장 | 노션 편집이 웹에 자동 반영 | 홈 페이지, 레시피 상세 페이지 |
 
 ### 2. MVP 필수 지원 기능
 
@@ -50,6 +50,9 @@
 
 ### 3. MVP 이후 기능 (제외)
 
+- On-Demand Revalidation (Notion Webhook 기반 즉시 갱신)
+- Notion 이미지 프록시 (`/api/notion-image` Route Handler)
+- SEO 메타데이터 고도화 (JSON-LD 구조화 데이터, sitemap.xml)
 - 검색 (전문 검색 인덱싱 필요)
 - 댓글 / 좋아요 (소셜 기능)
 - RSS 피드
@@ -134,7 +137,7 @@ Notion DB가 단일 데이터 소스이므로 별도 DB는 없음. Notion DB 스
 
 ### 프론트엔드 프레임워크
 
-- **Next.js 15** (App Router) - 정적 생성(SSG) + ISR로 Notion 데이터 캐싱
+- **Next.js 16** (App Router) - 정적 생성(SSG) + ISR로 Notion 데이터 캐싱
 - **TypeScript 5.6+** - 타입 안전성 보장
 - **React 19** - UI 라이브러리
 
@@ -147,13 +150,15 @@ Notion DB가 단일 데이터 소스이므로 별도 DB는 없음. Notion DB 스
 ### CMS 연동
 
 - **@notionhq/client** - 공식 Notion API 클라이언트 (DB 쿼리, 블록 fetch)
-- **notion-to-md** - Notion 블록을 Markdown으로 변환 (선택적 활용)
-- **react-notion-x** - Notion 페이지 렌더링 컴포넌트 (선택적 활용)
+- **notion-to-md** - Notion 블록을 Markdown으로 변환 후 자체 렌더링 **(기본 전략)**
+  - react-notion-x 대신 채택. React 19 / App Router 호환성이 안정적이고 shadcn/ui와 스타일 충돌 없음
+- **react-markdown** - notion-to-md가 생성한 Markdown을 HTML로 렌더링
 
 ### 캐시 & 갱신
 
-- **Next.js ISR** (`revalidate` 옵션) - 주기적 자동 재빌드
-- **Next.js On-Demand Revalidation** - Notion Webhook 수신 시 즉시 갱신
+- **Next.js ISR** (`revalidate: 1800`, 30분) - 주기적 자동 재빌드
+  - Notion 이미지 URL이 1시간 후 만료되므로, revalidate를 **30분 이하**로 설정하여 만료 전 갱신
+  - On-Demand Revalidation(Webhook)은 MVP 이후 기능으로 분류
 
 ### 폼 & 검증
 
@@ -161,8 +166,35 @@ Notion DB가 단일 데이터 소스이므로 별도 DB는 없음. Notion DB 스
 
 ### 배포 & 호스팅
 
-- **Vercel** - Next.js 15 최적화 배포, 환경변수 관리 (NOTION_API_KEY, NOTION_DATABASE_ID)
+- **Vercel** - Next.js 16 최적화 배포, 환경변수 관리 (NOTION_API_KEY, NOTION_DATABASE_ID)
 
 ### 패키지 관리
 
 - **npm** - 의존성 관리
+
+---
+
+## 기술적 주의사항
+
+### Notion 이미지 URL 만료 처리
+
+Notion 내부 파일의 서명 URL은 **1시간 후 만료**된다. 레시피 썸네일 및 본문 이미지가 깨지는 것을 방지하기 위해 아래 전략을 적용한다.
+
+- **MVP**: ISR `revalidate: 1800`(30분)으로 캐시 만료 전 재빌드 보장
+- **MVP 이후**: `/api/notion-image` 프록시 Route Handler 구현으로 영구 캐싱
+
+### 필터링 구현 전략
+
+필터링은 **클라이언트 사이드**에서 처리한다.
+
+- 서버에서 전체 레시피 메타데이터(제목, 카테고리, 난이도, 조리시간, 썸네일 URL)를 ISR로 한 번 fetch
+- 클라이언트 컴포넌트(`"use client"`)에서 필터 상태를 관리하고 목록을 즉시 갱신 (페이지 이동 없음)
+- MVP 단계 레시피 수(수십~수백 건)에서는 성능 문제 없음
+
+### 지원 Notion 블록 타입 (MVP 범위)
+
+| 지원 | 블록 타입 |
+|------|-----------|
+| ✅ | paragraph, heading_1~3, bulleted_list_item, numbered_list_item |
+| ✅ | image, divider, quote, code |
+| ❌ (MVP 이후) | toggle, table, embed, bookmark, callout |
